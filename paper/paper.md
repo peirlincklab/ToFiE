@@ -27,6 +27,7 @@ bibliography: paper.bib
 ---
 
 # Summary
+Begin your paper with a summary of the high-level functionality of your software for a non-specialist reader. Avoid jargon in this section.
 
 # Statement of need
 
