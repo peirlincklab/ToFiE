@@ -30,27 +30,12 @@ bibliography: paper.bib
 Begin your paper with a summary of the high-level functionality of your software for a non-specialist reader. Avoid jargon in this section.
 
 # Statement of need
-A Statement of need section that clearly illustrates the research purpose of the software and places it in the context of related work.
+A Statement of need section that clearly illustrates the research purpose of the software and places it in the context of related work - i.e. we eventually refer to arxiv preprint [@Togo:2025] here once that is online.
 
-`Gala` is an Astropy-affiliated Python package for galactic dynamics. Python
+`ToFiE` is a Python package for ... Python
 enables wrapping low-level languages (e.g., C) for speed without losing
-flexibility or ease-of-use in the user-interface. The API for `Gala` was
-designed to provide a class-based and user-friendly interface to fast (C or
-Cython-optimized) implementations of common operations such as gravitational
-potential and force evaluation, orbit integration, dynamical transformations,
-and chaos indicators for nonlinear dynamics. `Gala` also relies heavily on and
-interfaces well with the implementations of physical units and astronomical
-coordinate systems in the `Astropy` package [@astropy] (`astropy.units` and
-`astropy.coordinates`).
-
-`Gala` was designed to be used by both astronomical researchers and by
-students in courses on gravitational dynamics or astronomy. It has already been
-used in a number of scientific publications [@Pearson:2017] and has also been
-used in graduate courses on Galactic dynamics to, e.g., provide interactive
-visualizations of textbook material [@Binney:2008]. The combination of speed,
-design, and support for Astropy functionality in `Gala` will enable exciting
-scientific explorations of forthcoming data releases from the *Gaia* mission
-[@gaia] by students and experts alike.
+flexibility or ease-of-use in the user-interface. The API for `ToFiE` was
+designed to provide a class-based and user-friendly interface to ...
 
 # Mathematics
 
