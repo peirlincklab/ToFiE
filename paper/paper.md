@@ -30,6 +30,7 @@ bibliography: paper.bib
 Begin your paper with a summary of the high-level functionality of your software for a non-specialist reader. Avoid jargon in this section.
 
 # Statement of need
+A Statement of need section that clearly illustrates the research purpose of the software and places it in the context of related work.
 
 `Gala` is an Astropy-affiliated Python package for galactic dynamics. Python
 enables wrapping low-level languages (e.g., C) for speed without losing
@@ -91,6 +92,11 @@ and referenced from text using \autoref{fig:example}.
 Figure sizes can be customized by adding an optional second parameter:
 ![Caption for example figure.](figure.png){ width=20% }
 
+# Usage
+Mention (if applicable) a representative set of past or ongoing research projects using the software and recent scholarly publications enabled by it.
+Mention arxiv submission October 2025.
+
 # Acknowledgements
 
 # References
+A list of key references, including to other software addressing related needs. Note that the references should include full names of venues, e.g., journals and conferences, not abbreviations only understood in the context of a specific discipline.
