@@ -1,0 +1,15 @@
+# Create virtual environment with python 3.9.4
+python3.9 -m venv ToFiE_env 
+
+# Activate the environment in terminal
+source ToFiE_env/bin/activate
+
+# Install ipykernel to use the environment as a Jupyter kernel. Need to select this kernel when running python scripts.
+python -m ipykernel install --name "ToFiE_env"
+
+# Install all python modules and dependencies needed using pip
+pip install -r /Users/Work/Desktop/Master/ARP/fiber_feature_analysis/requirements.txt
+
+# Deactivate the environment
+deactivate
+

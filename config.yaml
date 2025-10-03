@@ -1,0 +1,30 @@
+path: "/Users/Work/Desktop/Master/ARP/fiber_feature_analysis/"   # Path to directory with config.yaml		
+path_to_dir: "images/"   # Path to input image
+path_to_output: "outputs/"   # Path for outputs
+remote_dir: "/scratch/rtogo/"   # If running the Step 2 on a the cluster, specify the working directory.
+
+image: "mini_3d_trial15_1-2volfrac_3p5mgml_37C_pH74_120hz.tif"   # Image tif file name
+
+
+# Image processing
+pixel_spacing: [0.11, 0.11, 0.11]   # Z,X,Y image pixel size (um)
+std: 2.5    # Gaussian blur kernel standard deviation (pixels)
+truncate: 0.1   # Gaussian blur kernel truncation (pixels)
+upper: 0.999995   # Upper percentile pixel for z intensity correction 
+lower: 0    # Constant lower pixel intensity for z intensity correction 
+iter: 4     # Number of iterations for Richardson-Lucy Deconvolution
+
+
+# Parameters for DisPerSe
+persistence_val: 20
+smooth_val: 100
+assemble_val: 30
+trimBelow_val: 10
+
+
+# Skeleton refinement
+angle_threshold: 1.0472 #rad
+length_threshold: 0.4 #um
+remove_broken_ends: True
+remove_spurious_ends: True
+remove_dangling_ends: False
