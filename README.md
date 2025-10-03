@@ -1,4 +1,4 @@
-# ToFiE: A Python framework for Fiber Topology Extraction from microscopy images.
+# ToFiE: Python framework for Fiber Topology Extraction from microscopy Images.
 
 A workflow for topology-aware three-dimensional fiber reconstruction of biological networks from microscopy images. Supporting code for this workflow can be found in this repository. 
 
