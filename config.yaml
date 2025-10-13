@@ -25,6 +25,5 @@ trimBelow_val: 10
 # Skeleton refinement
 angle_threshold: 1.0472 #rad
 length_threshold: 0.4 #um
-remove_broken_ends: True
-remove_spurious_ends: True
+remove_broken_ends: False
 remove_dangling_ends: False
