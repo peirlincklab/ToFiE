@@ -41,6 +41,7 @@ A set of custom functions are applied for further refining filament subunits wit
 
 
 
+
 ### Example
 
 The three steps can be run altogether with run.py or separately in run_steps.py. For larger image data, the skeletonization process can be outsourced to Docker or Apptainer on a cluster. In that case specify in the function `ToFiE_workflow_step2(config_dir, config_file, local = False)`, instead of `ToFiE_workflow_step2(config_dir, config_file, local = True)`. 
