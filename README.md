@@ -8,12 +8,15 @@ ToFiE is a semi-automated topology-aware fiber extraction workflow that facilita
 ## Installation through terminal
 
 First create a virtual environment with python 3.9.4.
+
 `python3.9 -m venv ToFiE_env`
 
 Then make sure to activate the environment in the terminal. 
+
 `source ToFiE_env/bin/activate`
 
 Install all python modules and dependencies needed using pip.
+
 `pip install -r <project directory>/fiber_feature_analysis/requirements.txt`
 
 Install ipykernel to run the workflow as in an interactive window on Visual Studio code.  
