@@ -2,25 +2,24 @@
 import subprocess
 import sys
 config_dir = "/Users/Work/Desktop/Master/ARP/fiber_feature_analysis/"
-config_filename = "config.yaml"
+config_file = "config.yaml"
 sys.path.append(config_dir)
 from src.commands import get_image_processing_command, get_disperse_commands, get_skeleton_refinement_command
 
-def ToFiE_workflow_step1(config_dir, config_path):
+def ToFiE_workflow_step1(config_dir, config_file):
 
     """
     Step 1: Image processing
     """
 
-    cmd = get_image_processing_command(config_dir, config_path)
+    cmd = get_image_processing_command(config_dir, config_file)
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     print("STDOUT:\n", result.stdout)
     print("STDERR:\n", result.stderr)
     print("Image processing is done!")
 
-
-def ToFiE_workflow_step2(config_dir, config_path, local = False):
+def ToFiE_workflow_step2(config_dir, config_file, local = False):
 
     """
     Step 2: Skeletonization using DisPerSe (via Docker)
@@ -28,7 +27,7 @@ def ToFiE_workflow_step2(config_dir, config_path, local = False):
 
     if local == True:
         
-        cmd1, cmd2 = get_disperse_commands(config_dir, config_path, local)
+        cmd1, cmd2 = get_disperse_commands(config_dir, config_file, local)
 
         result1 = subprocess.run(cmd1, capture_output=True, text=True)
 
@@ -55,21 +54,22 @@ def ToFiE_workflow_step2(config_dir, config_path, local = False):
         empty = get_disperse_commands(config_dir, config_path, local)
 
 
-
-def ToFiE_workflow_step3(config_dir, config_path):
+def ToFiE_workflow_step3(config_dir, config_file):
 
     """
     Step 3: Skeleton Refinement
     """
-    cmd = get_skeleton_refinement_command(config_dir, config_path)
+    cmd = get_skeleton_refinement_command(config_dir, config_file)
     result = subprocess.run(cmd, capture_output=True, text=True)
-
+    
     print("STDOUT:\n", result.stdout)
     print("STDERR:\n", result.stderr)
     print("Skeleton refinement and graph construction is done!")
 
 
-ToFiE_workflow_step2(config_dir, config_dir+config_filename, local = True)
+ToFiE_workflow_step1(config_dir, config_file)
+ToFiE_workflow_step2(config_dir, config_file, local = True)
+ToFiE_workflow_step3(config_dir,config_file)
 
 
 # %%
