@@ -4,7 +4,7 @@ from denoise_contrast_enhance import open_tif_to_numpy
 from read_skeleton import load_NDskl
 from skeleton_processing import SkeletonObject
 from skeleton_network import skeleton_to_network 
-import pyVista_visualization
+from pyVista_visualization import pyVista_visualization
 import pickle
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -79,7 +79,7 @@ def skeleton_refinement(config_path):
     plt.show(block=True)
 
     # 3D visualization
-    pyVista_visualization(base_path, image, path_to_output + network )
+    pyVista_visualization(str(base_path), image, path_to_output + network )
 
    
 if __name__ == "__main__":
