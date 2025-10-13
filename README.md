@@ -29,7 +29,7 @@ The workflow works in three steps: first it takes high resolution 3D images and 
 
 ### Image Pre-processing
 To address noise in the raw image, we apply a Gaussian filter, followed by a median filter. We standardize the contrast and intensities across the z-axis (depth) of the smoothened image by re-normalizing pixel intensities falling between a specified lower and upper threshold such that their values span the complete 8-bit range, based on the method of Intensify3D (Yayon et. al. 2018). Pixel values outside the thresholds are clipped to the 8-bit range limits. The normalizing step is important to ensure the algorithm reconstructs unbiasedly at all depths, as darker fibrous structures would be considered as less persistent topological features of the network. The enhanced image stack is deconvoluted with the Gaussian point spread function (PSF) and the Richardson-Lucy deconvolution algorithm using the SDeconv python
-framework (Prigen 2023). The resolution of the smoothened image, estimated with the Fourier Ring Correlation (FRC) function in the MIPLIB software (Koh et al. 2019), is used as the lateral and axial size of the PSF. To enhance the contrast after deconvolution, we re-normalize the image stack to the full 8-bit range as previously.
+framework (Prigent et. al. 2023). The resolution of the smoothened image, estimated with the Fourier Ring Correlation (FRC) function in the MIPLIB software (Koh et al. 2019), is used as the lateral and axial size of the PSF. To enhance the contrast after deconvolution, we re-normalize the image stack to the full 8-bit range as previously.
 
 
 ### Skeletonization 
