@@ -3,19 +3,19 @@ import yaml
 from pathlib import Path
 
 
-def get_image_processing_command(config_dir,  config_path):
+def get_image_processing_command(config_dir,  config_file):
         
     cmd = [
         "python",
         config_dir + "src/image_processing.py",
-        "--config", config_path,
+        "--config", config_dir+config_file,
     ]
 
     return cmd
 
-def get_disperse_commands(config_dir, config_path, local=True):
+def get_disperse_commands(config_dir, config_file, local=True):
         
-    with open(config_path) as f:
+    with open(config_dir+config_file) as f:
         config = yaml.safe_load(f)
 
     base_path = Path(config["path"])
@@ -91,12 +91,12 @@ def get_disperse_commands(config_dir, config_path, local=True):
         return docker_cmd_1, docker_cmd_2
 
 
-def get_skeleton_refinement_command(config_dir, config_path):
+def get_skeleton_refinement_command(config_dir, config_file):
         
     cmd = [
         "python",
         config_dir + "src/skeleton_refinement.py",
-        "--config", config_path, 
+        "--config", config_dir+config_file, 
     ]
     
     return cmd

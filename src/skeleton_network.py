@@ -3,17 +3,32 @@ import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 from scipy.integrate import quad
-import networkx as nx
 from scipy.optimize import curve_fit
-import math
+from skeleton_processing import SkeletonObject 
 
-def skeleton_to_network(skeleton, image, pixel_to_um):
-    # pixel_to_um = [193/2048, 11/116]
+
+def angle_between_outbound_fiber(vec1, vec2):
+    dot_product = np.dot(vec1, vec2)
+    norm_vector1 = np.linalg.norm(vec1)
+    norm_vector2 = np.linalg.norm(vec2)
+    
+    cos_theta = dot_product / (norm_vector1 * norm_vector2)
+    angle_rad = np.arccos(cos_theta)
+    
+    return angle_rad
+
+
+def skeleton_to_network(skeleton_obj, image, pixel_to_um):
+
+    assert isinstance(skeleton_obj, SkeletonObject)
+    skeleton = skeleton_obj.skeleton
+
 
     '''
-    2D: pixel_to_um = 193/2048
-    3D: pixel_to_um = [11/116, 193/2048]  [z,xy]
+    2D: pixel_to_um = [xy]
+    3D: pixel_to_um = [z,xy]
     '''
 
     df0 = skeleton[0]
@@ -39,11 +54,11 @@ def skeleton_to_network(skeleton, image, pixel_to_um):
 
 
     if "z" not in df0.columns:
-        assert (type(pixel_to_um) == float), "pixel_to_um input is a float of the pixel size"
+        assert (type(pixel_to_um) == list), "pixel_to_um input is a list specifiying the lateral pixel size"
 
         # Compute the node coordinates    
-        nodes["x_um"] = nodes["x"] * pixel_to_um
-        nodes["y_um"] = nodes["y"] * pixel_to_um
+        nodes["x_um"] = nodes["x"] * pixel_to_um[0]
+        nodes["y_um"] = nodes["y"] * pixel_to_um[0]
         dic_nodes = nodes.set_index("original_id")[["x", "y", "x_um","y_um", "field_value"]].T.to_dict('dict')
 
         # Combine all node attributes into dictionary
@@ -85,7 +100,7 @@ def skeleton_to_network(skeleton, image, pixel_to_um):
 
         for i in df2.filament.unique():
             # Compute the arc length of a filament as the sum of distance between all sampling points
-            sampling_points = df2.query(f"filament=={i}")[["x","y"]].values*pixel_to_um
+            sampling_points = df2.query(f"filament=={i}")[["x","y"]].values*pixel_to_um[0]
             arc = np.sum(np.linalg.norm(sampling_points[1:] - sampling_points[:-1], axis=1))
             arc_length.append(arc)
 
@@ -106,10 +121,10 @@ def skeleton_to_network(skeleton, image, pixel_to_um):
         dic_pos = nodes[list("xy")].T.to_dict('list')
 
         G.graph["image_shape"] = image.shape
-        G.graph["pixel_size_um"] = [pixel_to_um]
+        G.graph["pixel_size_um"] = pixel_to_um
 
-        plt.figure(figsize=(5, 5))
-        nx.draw(G, node_size = 1, node_color = "red",edge_color = "black", width = 0.2, pos = dic_pos)
+        # plt.figure(figsize=(5, 5))
+        # nx.draw(G, node_size = 1, node_color = "red",edge_color = "black", width = 0.2, pos = dic_pos)
 
 
     if "z" in df0.columns:
@@ -154,8 +169,6 @@ def skeleton_to_network(skeleton, image, pixel_to_um):
             if angle_pol > np.pi:
                 angle_pol = abs((angle_pol - np.pi))
 
-            # angle_azi = angle_azi - np.pi/2  #azimuthal angle in range [-90,90], with angle measured counterclockwise wrt to the vertical
-
             angle_pol = angle_pol - np.pi/2  #polar angle in range [-90,90], with angle measured counterclockwise wrt to the vertical
 
             angle_azimuth.append(angle_azi)
@@ -193,40 +206,31 @@ def skeleton_to_network(skeleton, image, pixel_to_um):
         G.graph["image_shape"] = image.shape
         G.graph["pixel_size_um"] = pixel_to_um
 
-        plt.figure(figsize=(5, 5))
-        nx.draw(G, node_size = 1, node_color = "red",edge_color = "black", width = 0.2, pos = dic_pos)
+        # plt.figure(figsize=(5, 5))
+        # nx.draw(G, node_size = 1, node_color = "red",edge_color = "black", width = 0.2, pos = dic_pos)
 
     return G
 
-
-def angle_between_outbound_fiber(vec1, vec2):
-    dot_product = np.dot(vec1, vec2)
-    norm_vector1 = np.linalg.norm(vec1)
-    norm_vector2 = np.linalg.norm(vec2)
-    
-    cos_theta = dot_product / (norm_vector1 * norm_vector2)
-    angle_rad = np.arccos(cos_theta)
-    
-    return angle_rad
-
-def graph_descriptors(graph, skeleton):
+def network_descriptors(graph, datasetName, plot_histogram = False, plot_graph_measures = False):
 
     # Node valency 
     valency = []
     [valency.append(n[1]) for n in graph.degree()]
     valency_mask = np.array(valency)[np.where(np.array(valency)>2)]
 
-
     # Edge length 
     length = np.array(list(nx.get_edge_attributes(graph,'edge_length_um').values()))
     fil_length = np.array(list(nx.get_edge_attributes(graph,'arc_length_um').values()))
-
 
     # Cosine distribution
     cosine_angles = []
     cosines = []
 
-    if "z" in skeleton[0]:
+    nodes = [node for node in graph.nodes()]
+    n_0 = nodes[0]
+
+
+    if graph.nodes(data=True)[n_0].get('z'):
 
         for node in graph.nodes():
             if len(graph.edges(node))>1:
@@ -243,7 +247,7 @@ def graph_descriptors(graph, skeleton):
                             connected_node_pos2 = np.array([graph.nodes[node_connected2]["x_um"], graph.nodes[node_connected2]["y_um"], graph.nodes[node_connected2]["z_um"]])
                             vector2 = (connected_node_pos2 - orig_node_pos)
 
-                            cosine = angle_between_outbound_fiber(vector1, vector2)
+                            cosine = angle_between_outbound_fiber(vector1.astype(np.float64), vector2.astype(np.float64))
 
                             # To avoid issues with too parallel outgoing fibers, leading to numerical instability
                             if np.linalg.norm(vector1) * np.linalg.norm(vector2) < 1e-6 or not np.isfinite(cosine):
@@ -268,7 +272,7 @@ def graph_descriptors(graph, skeleton):
                             connected_node_pos2 = np.array([[graph.nodes[node_connected2]["x_um"], graph.nodes[node_connected2]["y_um"]]])
                             vector2 = (connected_node_pos2 - orig_node_pos)[0]
 
-                            cosine = angle_between_outbound_fiber(vector1, vector2)
+                            cosine = angle_between_outbound_fiber(vector1.astype(np.float64), vector2.astype(np.float64))
 
                             # To avoid issues with too parallel outgoing fibers, leading to numerical issues and instability
                             if np.linalg.norm(vector1) * np.linalg.norm(vector2) < 1e-6 or not np.isfinite(cosine):
@@ -279,69 +283,127 @@ def graph_descriptors(graph, skeleton):
 
 
     # Edge orientation
-    if "z" in skeleton[0]:
+    if graph.nodes(data=True)[n_0].get('z'):
         angles_azi = np.array(list(nx.get_edge_attributes(graph,'angle_azi').values())) # extract all edges angle attributes
         angles_polar = np.array(list(nx.get_edge_attributes(graph,'angle_polar').values()))
     else:
         angles_azi = np.array(list(nx.get_edge_attributes(graph,'angle_azi').values())) # extract all edges angle attributes
         angles_polar = None
 
-
+    # Edge density
     total_length = np.sum(length)
-    if "z" in skeleton[0]:
+    if graph.nodes(data=True)[n_0].get('z'):
         volume = np.prod(np.append(np.array((graph.graph["image_shape"][1:])) * graph.graph["pixel_size_um"][0], np.array((graph.graph["image_shape"][0])) * graph.graph["pixel_size_um"][1])) #um^3
         fiber_density = total_length / volume # um^-2
     else:
         area = np.prod(np.array((graph.graph["image_shape"][1:])) * graph.graph["pixel_size_um"][0])  #um^2
         fiber_density = total_length / area # um^-1
 
-    values = {"avg_fiber_density": np.round(fiber_density, 2), 
+    values = {"total #edges": len(length),
+              "avg_fiber_density": np.round(fiber_density, 2), 
               "mean_edge_length": np.round(np.mean(length),2), 
               "mean_fil_length": np.round(np.mean(fil_length), 2), 
               "mean_valency": np.round(np.mean(valency_mask),2), 
               "mean_cosine_angle": np.round(np.mean(cosine_angles)/np.pi,2)}
 
-    return valency, length, cosine_angles, angles_azi, angles_polar, values
+    params_val, params_length, params_cos, params_azi = histogram_fits(graph, valency, length, cosine_angles, angles_azi)
+
+    parameters = {"geometric parameters (valency): ": np.round(params_val,2).tolist(),
+                  "log normal parameters (edge length): ": np.round(params_length,2).tolist(),
+                  "beta parameters (cosine angle): ": np.round(params_cos,2).tolist(),
+                  "Von Mises parameters (azimuthal angle): ": np.round(params_azi,2).tolist() }
 
 
+    # # Compute graph measures from NetworkX
+    # graph_measure = {}
 
-def histogram_fits(skeleton, valency, length, cosine_angles, angles_azi, values):
+    # # Betweenness Centrality: how important is a node for information flow, number of shortest paths passing through it
+    # betweenness = nx.betweenness_centrality(graph, normalized=True, weight="edge_length_um", endpoints=True)
+    # node_color_betweenness = [betweenness[node] for node in graph.nodes]
 
-    summary = {}
-    summary.update(values)
-    summary.update({"total #edges": len(length)})
+    # # Closeness Centrallity: How close a node is to all other nodes
+    # closeness = nx.closeness_centrality(graph, distance = "edge_length_um")
+    # node_color_closeness = [closeness[node] for node in graph.nodes]
+
+    # # Clustering coefficient: local connectivity or clustering of nodes within the network, tells you about the presence of tightly connected groups
+    # clustering = nx.clustering(graph)
+    # node_color_cluster = [clustering[node] for node in graph.nodes]
+
+    # graph_measure["betweenness mean, std.: "] = [np.round(np.mean(node_color_betweenness),2), np.round(np.std(node_color_betweenness),2)]
+    # graph_measure["closeness mean, std.: "] = [np.round(np.mean(node_color_closeness),2), np.round(np.std(node_color_closeness),2)]
+    # graph_measure["clustering mean, std.: "] = [np.round(np.mean(node_color_cluster),2), np.round(np.std(node_color_cluster),2)]
+
+
+    summary = values|parameters#|graph_measure
+    print(summary)
+
+
+    if not os.path.exists(datasetName):
+        os.makedirs(datasetName)
+
+    if plot_histogram == True:
+        histogram_plot(valency, length, cosine_angles, angles_azi, params_val, params_length, params_cos, params_azi, datasetName)
+
+    if plot_graph_measures == True:
+        graph_measures_plot(graph, datasetName)
+    
+
+    # # Save average values, fitted parameters, graph measures
+    # with open(datasetName +"_summary.txt", 'w') as f:
+    #     for key in summary:
+    #         f.write(f"{key} {summary[key]}\n")
+    #     print("Average network values, fitted parameters, graph measures are saved to " + datasetName +"_summary.txt")
+
+
+    # # Save the valency, length, cosine angle and azimuthal angle distributions
+    # name = ["valency", "length", "cosine_angles", "angles_azi"]
+    # for i, distributions in enumerate([valency, length, cosine_angles, angles_azi]):
+    #     n = name[i]
+
+    #     with open(datasetName + f"_{n}.txt", 'w') as f:
+    #         values_str = [str(val) + '\n' for val in distributions]
+    #         f.writelines(values_str)
+        
+    #     print("Distributions are saved to " + datasetName + f"_{n}.txt")
+
+    
+    return valency, length, cosine_angles, angles_azi, angles_polar, summary
+
+
+def histogram_fits(graph, valency, length, cosine_angles, angles_azi):
 
     # Fit shifted geometric distribution to the node valency distribution
     valency_mask = np.array(valency)[np.where(np.array(valency)>2)]
-    hist, edges = np.histogram(valency_mask, bins=len(list(np.unique(valency_mask)))-1, density=True)
+    hist, edges = np.histogram(valency_mask, bins= np.arange(3, 7), density=True)
     centers = (edges[:-1] + edges[1:]) / 2
 
-    params_val, covariance = curve_fit(shifted_geometric, edges[:-1], hist, p0=[3], bounds=(3,np.inf))  # parameters are z
+    print( edges[:-1])
+
+    params_val, covariance = curve_fit(shifted_geometric, centers, hist, bounds=(3,7))  # parameters are z
     print( "z = ", params_val[0])
-    summary["valency_geometric"] = np.round(params_val,2).tolist()
 
 
     # Log normal fit to edge length distribution
-    hist, edges = np.histogram(length, bins=int(len(length)*0.05), density=True)
+    hist, edges = np.histogram(length, bins=np.linspace(0, 20, 40), density=True)
     centers = (edges[:-1] + edges[1:]) / 2
 
     params_length, covariance = curve_fit(log_normal, centers, hist, p0=[3, 2])  # parameters are L, and variance s
     print( "L = ", params_length[0], "v = ", params_length[1])
-    summary["length_log_normal"] = np.round(params_length,2).tolist()
 
 
     # Fit beta distribution to normalized cosine angles 
     norm_cosine_angles = np.array(cosine_angles)/np.pi
-    hist, edges = np.histogram(norm_cosine_angles, bins=int(len(norm_cosine_angles)*0.009), density=True)
+    hist, edges = np.histogram(norm_cosine_angles, bins=np.linspace(0, 1, 50), density=True)
     centers = (edges[:-1] + edges[1:]) / 2
 
     params_cos, covariance = curve_fit(beta, centers, hist, p0=[1,1], bounds=([0,0],[1000,1000]))  # parameters are alpha, beta
-    summary["cosines_beta"] = np.round(params_cos,2).tolist()
 
     # Univariate Von Mises fitting to edge azimuthal orientation
+    nodes = [node for node in graph.nodes()]
+    n_0 = nodes[0]
 
-    if "z" in skeleton[0]:
-        abins = np.linspace(-np.pi/2, np.pi/2, int(len(angles_azi)*0.02))
+    if graph.nodes(data=True)[n_0].get('z'):
+        abins = np.linspace(-np.pi/2, np.pi/2, 31)
         hist, edges = np.histogram(angles_azi, bins=abins, density = True, weights = length)
         hist_anistropic  = np.array(hist) - min(hist)
         total_area = np.sum(hist_anistropic * np.diff(edges))
@@ -353,14 +415,10 @@ def histogram_fits(skeleton, valency, length, cosine_angles, angles_azi, values)
         # To fit multiple peaks, add the intiial guess for each parameter for each peak
 
         params_azi, covariance = curve_fit(multi_vonmises, centers, hist_anistropic_normalized, p0 = [0,1], bounds = ([-np.pi/2,0], [np.pi/2, 20]))  
-        # integral_result, _ = quad(lambda x: vonmises_distribution(x, *params_azi), -np.pi/2, np.pi/2)
-        #print("Integral of von mises over domain sums up to one: ", integral_result)
-        summary["azimuthal_vonMises"] = np.round(params_azi,2).tolist()
-        summary["anisotropic fraction"] = 1-(Piso)
-        print("P_isotropic = ", Piso, ", P_anisotropic = ", 1-(Piso))
+        print(fr"P_isotropic = {np.round(Piso, 2)}, P_anisotropic = {np.round(1 - Piso, 2)}")
 
     else:
-        abins = np.linspace(-np.pi/2, np.pi/2, int(len(angles_azi)*0.02))
+        abins = np.linspace(-np.pi/2, np.pi/2, 31)
         hist, edges = np.histogram(angles_azi, bins=abins, density = True, weights = length)
         hist_anistropic  = np.array(hist) - min(hist)
         total_area = np.sum(hist_anistropic * np.diff(edges))
@@ -372,19 +430,16 @@ def histogram_fits(skeleton, valency, length, cosine_angles, angles_azi, values)
         # To fit multiple peaks, add the intiial guess for each parameter for each peak
 
         params_azi, covariance = curve_fit(multi_vonmises, centers, hist_anistropic_normalized, p0 = [0,0.5], bounds = ([-np.pi/2,0], [np.pi/2, 20]))  
-        summary["azimuthal_vonMises"] = np.round(params_azi,2).tolist()
-        summary["anisotropic fraction"] = 1-(Piso)
-        print("P_isotropic = ", np.round(Piso,2), ", P_anisotropic = ", np.round(1-(Piso),2))
+        print(fr"$P_{{isotropic}}$ = {np.round(Piso, 2)}, $P_{{anisotropic}}$ = {np.round(1 - Piso, 2)}")
 
-    print(summary)
-
-    return params_val, params_length, params_cos, params_azi, summary
+    return params_val, params_length, params_cos, params_azi
 
 
 def histogram_plot(valency, length, cosine_angles, angles_azi, params_val, params_length, params_cos, params_azi, figName):
 
     valency_mask = np.array(valency)[np.where(np.array(valency)>2)]
-    hist, edges = np.histogram(valency_mask, bins=len(list(np.unique(valency_mask)))-1, density=True)
+    val_unique = np.unique(valency_mask)
+    hist, edges = np.histogram(valency_mask, bins=np.arange(3, 7), density=True)
     centers = (edges[:-1] + edges[1:]) / 2
     x_fit = np.linspace(edges[0], edges[-1], 50)
     y_fit = shifted_geometric(x_fit, *params_val)
@@ -393,16 +448,19 @@ def histogram_plot(valency, length, cosine_angles, angles_azi, params_val, param
     # Plot valency distribution
     plt.figure(figsize=(16,5),dpi=400)
     plt.subplot(1,4,1)
-    plt.hist(valency_mask, bins=len(list(np.unique(valency_mask)))-1, facecolor='lightgray', alpha = 0.8, density=True)#, label = "Node degree")
-    plt.plot(x_fit, y_fit, label='Shifted geometric fit', color='darkgreen',  linewidth=1.5)
+    plt.hist(valency_mask, bins=np.arange(3, 7), facecolor='lightgray', alpha = 0.8, density=True)#, label = "Node degree")
+    plt.plot(x_fit, y_fit, label='Shifted geometric fit', color='magenta',  linewidth=1.5)
     plt.plot([], [], ' ', label=rf"$\overline{{z}}$: {np.round(params_val[0],3)}")
     plt.plot([], [], ' ', label=rf"$R^{{2}}$: {r_squared(hist, shifted_geometric(edges[:-1], *params_val))}")
     plt.xlabel("Node valency z")
     plt.ylabel(r'$f_{geometric}$( z; $\overline{z})$')
-    plt.legend()
+    plt.legend().get_frame().set_linewidth(0.0)
+    plt.minorticks_on()
+    plt.tick_params(direction='in', which= "both", top = True, right = True)
+    plt.tight_layout()
 
 
-    hist, edges = np.histogram(length, bins=int(len(length)*0.05), density=True)
+    hist, edges = np.histogram(length, bins=np.linspace(0, 20, 40), density=True)
     centers = (edges[:-1] + edges[1:]) / 2
     x_fit = np.linspace(edges.min(), edges.max(), 100)
     y_fit = log_normal(x_fit, *params_length)
@@ -410,16 +468,19 @@ def histogram_plot(valency, length, cosine_angles, angles_azi, params_val, param
 
     # Plot edge length distribution
     plt.subplot(1,4,2)
-    plt.hist(length,bins=int(len(length)*0.05), density=True,  facecolor='lightgray', alpha = 0.8)#, label = "Edge length")
-    plt.plot(x_fit, y_fit, label='Log-normal fit', color='green',  linewidth=1.5)
+    plt.hist(length,bins=np.linspace(0, 20, 40), density=True,  facecolor='lightgray', alpha = 0.8)#, label = "Edge length")
+    plt.plot(x_fit, y_fit, label='Log-normal fit', color='magenta',  linewidth=1.5)
     plt.plot([], [], ' ', label=fr"$\overline{{l}}$: {np.round(params_length[0],3)}, v: {np.round(params_length[1],3)}")
     plt.plot([], [], ' ', label=rf"$R^{{2}}$: {r_squared(hist,  log_normal(centers, *params_length))}")
     plt.ylabel(r'$f_{log-normal}( l; \overline{l}, v)$')
     plt.xlabel("Edge length $l$ ($\mu$m)")
-    plt.legend()
+    plt.legend().get_frame().set_linewidth(0.0)
+    plt.minorticks_on()
+    plt.tick_params(direction='in', which= "both", top = True, right = True)
+    plt.tight_layout()
 
     norm_cosine_angles = np.array(cosine_angles)/np.pi
-    hist, edges = np.histogram(norm_cosine_angles, bins=int(len(norm_cosine_angles)*0.009), density=True)
+    hist, edges = np.histogram(norm_cosine_angles, bins=np.linspace(0, 1, 50), density=True)
     centers = (edges[:-1] + edges[1:]) / 2
     x_fit = np.linspace(edges.min(), edges.max(), 100)
     y_fit = beta(x_fit, *params_cos)
@@ -427,16 +488,18 @@ def histogram_plot(valency, length, cosine_angles, angles_azi, params_val, param
 
     # Plot cosine distribution
     plt.subplot(1,4,3)
-    plt.hist(norm_cosine_angles, bins=int(len(norm_cosine_angles)*0.009), density=True, facecolor='lightgray', alpha = 0.8)#, label = "Edge cosines")
-    plt.plot(x_fit, y_fit, label='Beta fit', color='darkgreen',  linewidth=1.5)
+    plt.hist(norm_cosine_angles, bins=np.linspace(0, 1, 50), density=True, facecolor='lightgray', alpha = 0.8)#, label = "Edge cosines")
+    plt.plot(x_fit, y_fit, label='Beta fit', color='magenta',  linewidth=1.5)
     plt.plot([], [], ' ', label=fr"$\alpha$: {np.round(params_cos[0],3)}, $\beta$: {np.round(params_cos[1],3)}")
     plt.plot([], [], ' ', label=rf"$R^{{2}}$: {r_squared(hist,  beta(centers, *params_cos))}")
     plt.ylabel(r'$f_{beta}$($\delta$; $\alpha$, $\beta$)')
     plt.xlabel(r"Normalized cosine angle $\delta$")
-    plt.legend()
+    plt.legend().get_frame().set_linewidth(0.0)
+    plt.minorticks_on()
+    plt.tick_params(direction='in', which= "both", top = True, right = True)
+    plt.tight_layout()
 
-
-    abins = np.linspace(-np.pi/2, np.pi/2, int(len(angles_azi)*0.02))
+    abins = np.linspace(-np.pi/2, np.pi/2, 31)
     hist, edges = np.histogram(angles_azi, bins=abins, density = True, weights=length)
     hist_anistropic  = np.array(hist) - min(hist)
     total_area = np.sum(hist * np.diff(edges))
@@ -451,26 +514,41 @@ def histogram_plot(valency, length, cosine_angles, angles_azi, params_val, param
 
     # Plot azimuthal distribution
     plt.subplot(1,4,4)
-    plt.hist(angles_azi, bins=len(abins), density=True, facecolor='lightgray', alpha = 0.8, weights = length) #label = "Edge azimuthal angle",
+    plt.hist(angles_azi, bins=np.linspace(-np.pi/2, np.pi/2, 31), density=True, facecolor='lightgray', alpha = 0.8, weights = length) #label = "Edge azimuthal angle",
     plt.hlines(min(hist),min(angles_azi), max(angles_azi),"white")
-    plt.plot(x_fit, y_fit + min(hist),label=f"Von Mises fit", color='darkgreen', linewidth=1.5) 
+    plt.plot(x_fit, y_fit + min(hist),label=f"Von Mises fit", color='magenta', linewidth=1.5) 
     plt.plot([], [], ' ', label=fr"$\theta_{0}$: {np.round(params_azi[0],3)}, K: {np.round(params_azi[1],3)}")
     plt.plot([], [], ' ', label=fr"$P_{{anisotropic}}$ = {np.round(1-Piso, 3)}")
     plt.plot([], [], ' ', label=rf"$R^{{2}}$: {r_squared(hist_anistropic_normalized,  multi_vonmises(centers, *params_azi))}")
     plt.xlabel(r"Azimuthal angle $\theta$ (rad)")
     plt.ylabel(r'$f_{vonMises}$($\theta$; $\theta_{0}$, K)')
-    plt.legend(loc = "best")
+    plt.legend(loc = "best").get_frame().set_linewidth(0.0)
+    plt.minorticks_on()
+    plt.tick_params(direction='in', which= "both", top = True, right = True)
+    plt.tight_layout()
 
-    plt.savefig("figures/" + figName)
+    plt.savefig(figName + "_distributions.png")
+    plt.show()
 
 
-def graph_measures(graph, figName):
+def save_graph_network(graph, filename):
+    with open(filename +"_nodes.txt", 'w') as f:
+        # Save node coordinates (µm)
+        for node, data in graph.nodes(data=True):
+            f.write(f"{node} {data['x_um']} {data['y_um']} {data['z_um']}\n")
+    
+    with open(filename +"_edges.txt", 'w') as f:
+        # Save edges 
+        for u, v in graph.edges():
+            f.write(f"{u} {v}\n")
 
-    graph_measure = {}
+    print("Node coordinates and edges of the graph are saved to " + filename +"_nodes.txt" + ", " + filename + "_edges.txt")
+
+def graph_measures_plot(graph, figName):
 
     dic_pos = {}
     for node, attr in graph.nodes(data=True):
-        dic_pos[node] = [attr['x'], attr['y']]
+        dic_pos[node] = [attr['x_um'], attr['y_um']]
 
     # Betweenness Centrality: how important is a node for information flow, number of shortest paths passing through it
     betweenness = nx.betweenness_centrality(graph, normalized=True, weight="edge_length_um", endpoints=True)
@@ -484,33 +562,28 @@ def graph_measures(graph, figName):
     clustering = nx.clustering(graph)
     node_color_cluster = [clustering[node] for node in graph.nodes]
 
-    graph_measure["betweenness"] = [np.round(np.mean(node_color_betweenness),2), np.round(np.std(node_color_betweenness),2)]
-    graph_measure["closeness"] = [np.round(np.mean(node_color_closeness),2), np.round(np.std(node_color_closeness),2)]
-    graph_measure["cluster"] = [np.round(np.mean(node_color_cluster),2), np.round(np.std(node_color_cluster),2)]
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5), dpi = 200)
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-
-    nx.draw(graph, node_size=30, node_color = node_color_betweenness, edge_color="black", width=0.2, pos= dic_pos, ax=axes[0])
+    nx.draw(graph, node_size=30, node_color = node_color_betweenness, edge_color="black", width=0.2, pos= dic_pos, ax=axes[0], cmap='magma')
     axes[0].set_title(rf'$\overline{{x}}$: {np.round(np.mean(node_color_betweenness),2)}, $\sigma$: {np.round(np.std(node_color_betweenness),2)}', y=-0.01)
 
-    nx.draw(graph, node_size=30, node_color = node_color_closeness, edge_color="black", width=0.2, pos= dic_pos, ax=axes[1])
+    nx.draw(graph, node_size=30, node_color = node_color_closeness, edge_color="black", width=0.2, pos= dic_pos, ax=axes[1], cmap='magma')
     axes[1].set_title(rf'$\overline{{x}}$: {np.round(np.mean(node_color_closeness),2)}, $\sigma$: {np.round(np.std(node_color_closeness),2)}', y=-0.01)
 
-    nx.draw(graph, node_size = 30, node_color = node_color_cluster, edge_color = "black", width = 0.2, pos = dic_pos, ax=axes[2])
+    nx.draw(graph, node_size = 30, node_color = node_color_cluster, edge_color = "black", width = 0.2, pos = dic_pos, ax=axes[2], cmap='magma')
     axes[2].set_title(rf'$\overline{{x}}$: {np.round(np.mean(node_color_cluster),2)}, $\sigma$: {np.round(np.std(node_color_cluster),2)}', y=-0.01)
 
     for ax, node_color, title in zip(axes, [node_color_betweenness, node_color_closeness, node_color_cluster], ['Betweenness','Closeness', 'Clustering']):
-        sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=min(node_color), vmax=max(node_color)))
+        sm = plt.cm.ScalarMappable(norm=plt.Normalize(vmin=min(node_color), vmax=max(node_color)), cmap='magma')
         sm.set_array([]) 
         cbar = plt.colorbar(sm, ax=ax, orientation='vertical',fraction=0.05)
         cbar.set_label(f'{title}')
 
     plt.tight_layout()
-    plt.savefig("figures/" + figName)
+    plt.savefig(figName + "_graphMeasures.png")
     plt.show()
 
-    return graph_measure
-
+    return 
 
 ## Distributions for fitting
 
@@ -556,7 +629,6 @@ def vonmises_distribution(x, theta0, k):
 
     return 1/(np.pi*integral_I) * np.exp(k * np.cos(2*(x-theta0)))    #  adjusted to make distribution periodic over Pi instead of 2Pi
 
-
 def bivariate_vonmises(X, theta0, phi0, k1,k2):
 
     x,y = X
@@ -578,5 +650,8 @@ def r_squared(y_true, y_pred):
     sst = np.sum((y_true - y_mean)**2)
     sse = np.sum((y_true - y_pred)**2)    
     r_squared = 1 - (sse / sst)
-    
+
+    if sst == 0:
+        r_squared = 1.0
+   
     return np.round(r_squared,3)
