@@ -22,13 +22,9 @@ sys.path.insert(1, '/Users/Work/Desktop/Master/ARP/fiber_feature_analysis/src/pr
 from sdeconv.psfs import SPSFGaussian, SPSFGibsonLanni
 from sdeconv.deconv import SRichardsonLucy
 
-# # Local version of the MIPLIB library 
-# from miplibrary.fourier_ring_MIPLIB import (compute_average_FRC_resolution_XY, 
-#                                             compute_average_FRC_resolution_YZ, 
-#                                             argument_list_FRC)                                       
-
 # Image processing functions 
 from denoise_contrast_enhance import (open_tif_to_numpy,
+                                      gaussian_kernel_smoothing,
                                       RL_deconvolution, 
                                       normalize_numpy_8bit, 
                                       preprocess_image,
@@ -39,8 +35,6 @@ from denoise_contrast_enhance import (open_tif_to_numpy,
 
 
 def image_processing(config_path):
-
-
 
     def argument_list_FRC(fit_type, fit_degree, bin_number):
 
@@ -73,11 +67,15 @@ def image_processing(config_path):
         print ("The image dimensions are {} and spacing {} um.".format(img_stack.shape, img_spacing))
         res_xy = []
 
-        for i in range (img_stack.shape[0]):
-
-            image_2d_xy = Image(img_stack[i,...], (img_spacing[1], img_spacing[2]))
-            frc_resolution, frc_object = compute_single_FRC_resolution(image_2d_xy, args, plot = False)
-            res_xy.append(frc_resolution)
+        if img_stack.ndim == 2:
+            image_2d_xy = Image(img_stack, (img_spacing[1], img_spacing[2]))
+            frc_resolution, frc_object = compute_single_FRC_resolution(image_2d_xy, args, plot=False)
+            mean_res_xy = frc_resolution
+        else:
+            for i in range (img_stack.shape[0]):
+                image_2d_xy = Image(img_stack[i,...], (img_spacing[1], img_spacing[2]))
+                frc_resolution, frc_object = compute_single_FRC_resolution(image_2d_xy, args, plot=False)
+                res_xy.append(frc_resolution)
 
         mean_res_xy = np.mean(res_xy)
 
@@ -92,23 +90,16 @@ def image_processing(config_path):
         res_yz = []
 
         for i in np.linspace(0,img_stack.shape[1]-1, 50).astype(int):
-
             slice_yz = img_stack[...,i]
             frc_resolution, frc_object = compute_single_FRC_resolution(Image(slice_yz , [img_spacing[0], img_spacing[1]]), args, plot = False)
             res_yz.append(frc_resolution)
             
             
         mean_res_yz = np.mean(res_yz)
-        # if plot == True:
-        #     plot_frc_curve(frc_object, args)
         print ("Average YZ resolution = ", mean_res_yz )
 
         return mean_res_yz
     
-
-
-
-
 
     with open(config_path) as f:
         config = yaml.safe_load(f)
@@ -129,7 +120,13 @@ def image_processing(config_path):
 
     raw_stack , metadata = open_tif_to_numpy(path_to_dir + image, crop_factor= 1)
 
-    processed_stack_intensity_correction = z_intensity_correction(preprocess_image(raw_stack, sigma = (std,std,std), truncate = truncate), percentile = upper, min_val = lower, plot = False)
+    is_2d = raw_stack.shape[0] == 1
+
+    if is_2d: # 2D image 
+        raw_stack = raw_stack[0, ...]
+        processed_stack_intensity_correction = preprocess_image(raw_stack, sigma = (std,std), truncate = truncate)
+    else:
+        processed_stack_intensity_correction = z_intensity_correction(preprocess_image(raw_stack, sigma = (std,std,std), truncate = truncate), percentile = upper, min_val = lower, plot = False)
 
     ## FRC RESOLUTION ESTIMATE
     fit_type = "polynomial"
@@ -137,49 +134,99 @@ def image_processing(config_path):
     bin_number = "3"
     args = argument_list_FRC(fit_type, fit_degree, bin_number)
 
-    '''
-    If the FRC correlation never crosses the threshold, it will instead pick the frequency with lowest correlation. 
-    These types of results should be considered with care.
-    '''
-
     resolution_XY = compute_average_FRC_resolution_XY(processed_stack_intensity_correction, pixel_spacing, args)
-    resolution_YZ = compute_average_FRC_resolution_YZ(processed_stack_intensity_correction, pixel_spacing, args)
+    
+    if is_2d: # 2D image 
+        print( "Resolution estimate (um): " , resolution_XY)
 
-    print( "Resolution estimate (um): " , resolution_XY, resolution_YZ)
+        if not math.isnan(resolution_XY):
+            pixel_res_xy = math.floor(resolution_XY/pixel_spacing[1])  
+            psf_generator = SPSFGaussian(sigma=(pixel_res_xy, pixel_res_xy), shape=(raw_stack.shape))
+            psf = psf_generator()
+            deconv_res = RL_deconvolution(processed_stack_intensity_correction, psf, iter)
+            deconv_res_intensity_correction = z_intensity_correction(deconv_res , percentile = 0.99990, min_val = 0, plot = False)
+        else:
+            print("Skipping deconvolution.")
+            deconv_res_intensity_correction = processed_stack_intensity_correction   
 
+    else:  # 3D image
+        resolution_YZ = compute_average_FRC_resolution_YZ(processed_stack_intensity_correction, pixel_spacing, args)
+        print( "Resolution estimate (um): " , resolution_XY, resolution_YZ)
 
-    # Use the FRC resolution estimate to obtain the lateral and axial width of the Gaussian PSF
+        if not math.isnan(resolution_XY) and not math.isnan(resolution_YZ):
+            pixel_res_xy = math.floor(resolution_XY/pixel_spacing[1])  
+            pixel_res_z = math.floor(resolution_YZ/pixel_spacing[0])  
+            psf_generator = SPSFGaussian(sigma=(pixel_res_z, pixel_res_xy, pixel_res_xy), shape=(raw_stack.shape))
+            psf = psf_generator()
+            deconv_res = RL_deconvolution(processed_stack_intensity_correction, psf, iter)
+            deconv_res_intensity_correction = z_intensity_correction(deconv_res , percentile = 0.99990, min_val = 0, plot = False)
+        else:
+            print("Skipping deconvolution.")
+            deconv_res_intensity_correction = processed_stack_intensity_correction   
 
-    pixel_res_xy = math.floor(resolution_XY/pixel_spacing[1])  
-    pixel_res_z = math.floor(resolution_YZ/pixel_spacing[0])  
-    psf_generator = SPSFGaussian(sigma=(pixel_res_z, pixel_res_xy, pixel_res_xy), shape=(raw_stack.shape))
 
     # Gibson and Lanni PSF: experimental parameters related to the sample, objective lens, imersion medium and imaging settings are filled in.
     # psf_generator = SPSFGibsonLanni(raw_stack.shape, 
     #                                 NA=1.3, wavelength=0.488, M=63, ns=1.33, ng0=1.5, ng=1.5, ni0=1.47, ni=1.47, 
     #                                 ti0=150, tg0=170, tg=170, res_lateral= pixel_spacing[1], res_axial=pixel_spacing[0], pZ=0, use_square=True)
 
-    psf = psf_generator()
 
-    deconv_res_intensity_correction = z_intensity_correction( RL_deconvolution(processed_stack_intensity_correction, psf, iter), percentile = 0.99990, min_val = 0, plot = False)
+   
 
+    # Save processed image and fits file
     save_numpy_to_8bit_tif(deconv_res_intensity_correction,  filename = path_to_output + f"processed_{image}", metadata=metadata)
     save_fits(deconv_res_intensity_correction, f"processed_{image}", path = path_to_output)
 
+    # Plot image processing results
     cmp = 'magma'
-
-
-    plt.figure(figsize=(6,3), dpi=300)
-    plt.subplot(1,2,1)
+    plt.figure(figsize=(6,4), dpi=600)
+    plt.subplot(2,3,1)
     plt.imshow(np.max(normalize_numpy_8bit(raw_stack), axis=0), cmap=cmp, vmin=0, vmax=255)
     plt.axis('off')
-    plt.subplot(1,2,2)
+    plt.title("1- original", fontsize = 8)
+    plt.tight_layout(pad=0.1)
+    plt.subplot(2,3,2)
+    plt.imshow(np.max(normalize_numpy_8bit(processed_stack_intensity_correction), axis=0), cmap=cmp, vmin=0, vmax=255)
+    plt.axis('off')
+    plt.title("2- denoised + intensity corrected", fontsize = 8)
+    plt.tight_layout(pad=0.1)
+    plt.subplot(2,3,3)
     plt.imshow(np.max(normalize_numpy_8bit(deconv_res_intensity_correction), axis=0), cmap=cmp, vmin=0, vmax=255)
     plt.axis('off')
-    plt.savefig(path_to_output + f"overview_{image}.png", dpi=300, pad_inches=0, bbox_inches='tight')
+    plt.title("3- deconvoluted", fontsize = 8)
+    plt.tight_layout(pad=0.1)
+
+    intensity_z, intensity_z_min, intensity_z_max, intensity_z_after  = [], [], [], []
+    x = np.arange(0,raw_stack.shape[0])
+
+    for i in np.arange(0,raw_stack.shape[0]):
+        maxi = np.max(raw_stack[i,...])  # Maximum pixel intensity in the slice
+        minimum = np.min(raw_stack[i,...])  # Average pixel intensity in the slice
+        percentage = np.quantile(raw_stack[i,...], upper) # nth- percentile pixel intensity in the slice
+        intensity_z.append(percentage)
+        intensity_z_min.append(minimum)
+        intensity_z_max.append(maxi)
+        corrected_perc = np.quantile(processed_stack_intensity_correction[i,...], upper) # Nth- percentile pixel intensity in the corrected slice
+        intensity_z_after.append(corrected_perc)
+    
+    intensity_z_smoothed = gaussian_kernel_smoothing(np.arange(raw_stack.shape[0]), np.array(intensity_z), sigma = 10)
+    intensity_z_after_smoothed = gaussian_kernel_smoothing(np.arange(processed_stack_intensity_correction.shape[0]), np.array(intensity_z_after), sigma = 10)
+ 
+    plt.subplot(2,3,5)
+    plt.plot(x, intensity_z, 'o', ms = 1, color = "m")
+    plt.plot(x, intensity_z_smoothed, linewidth = 2, color = "m", label=f"no z-correction ($P_{{{upper*100}}}$)") 
+    plt.plot(x, intensity_z_after, 'ko', ms = 1) 
+    plt.plot(x, intensity_z_after_smoothed, linewidth = 2, color = "k", label=f"z-correction ($P_{{{upper*100}}}$)")
+    plt.legend(fontsize= 6, loc = "lower right", frameon = False)
+    plt.xlabel("z-slice", fontsize= 8)
+    plt.ylabel("intensity", fontsize= 8)
+    plt.ylim(0,260)
+    plt.minorticks_on()
+    plt.tick_params(direction='in', which= "both", top = True, right = True)
+
+    plt.tight_layout(pad=0.1)
+    plt.savefig(path_to_output + f"figures/overview_{image}.png", dpi=600, pad_inches=0, bbox_inches='tight')
     plt.show()
-
-
     
     return raw_stack, deconv_res_intensity_correction  #deconv_res_intensity_correction #normalize_numpy_8bit(raw_stack), processed_stack_intensity_correction
 

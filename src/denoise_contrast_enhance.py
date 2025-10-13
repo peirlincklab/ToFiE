@@ -93,6 +93,19 @@ def normalize_numpy_8bit(array):
     return array_normalized
 
 
+def gaussian_kernel_smoothing(x,y,sigma):
+
+        smoothed_values = np.zeros(y.shape)
+
+        for x_position in x:
+
+            kernel = np.exp(-((x - x_position) ** 2) / (2 * sigma**2))
+            kernel = kernel / sum(kernel)
+            smoothed_values[x_position] = sum(y * kernel)
+            
+        return smoothed_values
+
+
 def preprocess_image(numpy_array, sigma = (2.5,2.5,2.5), truncate=0.2):
 
     """ Apply gaussian blurring and median filter to smoothen and denoise the image.
@@ -114,6 +127,7 @@ def preprocess_image(numpy_array, sigma = (2.5,2.5,2.5), truncate=0.2):
     numpy_array_gaus_med = normalize_numpy_8bit(numpy_array_gaus_med)
     
     return numpy_array_gaus_med
+
 
 def z_intensity_correction(stack, percentile = 0.999, min_val = 0, plot = False):
 
@@ -201,7 +215,6 @@ def z_intensity_correction(stack, percentile = 0.999, min_val = 0, plot = False)
     intensity_z_after_smoothed = gaussian_kernel_smoothing(np.arange(stack.shape[0]), np.array(intensity_z_after), sigma = 10)
 
     if plot == True:
-
         x = np.arange(0,stack.shape[0])
 
         plt.figure(figsize=(5,3), dpi=300)
@@ -222,48 +235,6 @@ def z_intensity_correction(stack, percentile = 0.999, min_val = 0, plot = False)
         plt.show()
 
     return stack_corrected
-
-
-def plot_raw_preprocess(raw_img, preprocessed_img, clip= 0.005):
-
-    if len(raw_img.shape) == 3:
-        raw_slice = np.max(raw_img, axis = 0)
-        processed_slice = np.max(preprocessed_img, axis = 0)
-    else:
-        raw_slice = raw_img
-        processed_slice = preprocessed_img
-
-    preprocessed_img_n = (processed_slice-np.min(processed_slice))/(np.max(processed_slice)-np.min(processed_slice))
-    preprocessed_img_n = exposure.equalize_adapthist(preprocessed_img_n, clip_limit=clip)
-
-    plt.figure(figsize=(5,5), dpi=200)
-    plt.tight_layout()
-    plt.subplot(2,2,1)
-    plt.title("Raw")
-    plt.imshow(raw_slice, cmap = "inferno")
-    plt.subplot(2,2,2)
-    plt.title("Pre-processed")
-    plt.imshow(preprocessed_img_n, cmap = "inferno")
-    plt.subplot(2,2,3)
-    plt.imshow(raw_slice[300:500,300:500], cmap = "inferno")
-    plt.subplot(2,2,4)
-    plt.imshow(preprocessed_img_n[300:500,300:500], cmap = "inferno")
-    plt.show()
-
-
-def plot_histogram (img):
-
-    hist, bins = np.histogram(img, bins=np.arange(256))
-    max_bin_index = np.argmax(hist)
-    print("bin with highest count:", bins[max_bin_index+1])
-
-    plt.figure(figsize=(5,3), dpi = 300)
-    plt.hist(np.ravel(img), bins=bins, edgecolor='black')
-    plt.xlabel('Value')
-    plt.ylabel('Frequency')
-    plt.yscale("log")
-    plt.tight_layout()
-    plt.tick_params(direction='in', which= "both", top = True, right = True)
 
 
 def RL_deconvolution(img_stack, psf, iter):
@@ -288,7 +259,6 @@ def RL_deconvolution(img_stack, psf, iter):
     return deconv
 
 
-
 def save_numpy_to_8bit_tif(images_to_tif, filename, metadata):
 
     """ Writes the processed numpy image data to an 8-bit TIFF file with original metadata information.
@@ -303,6 +273,7 @@ def save_numpy_to_8bit_tif(images_to_tif, filename, metadata):
     
     imlist = []
     images_to_tif =  normalize_numpy_8bit(images_to_tif) 
+
 
     if len (images_to_tif.shape) == 3:
         for image_to_tif in images_to_tif:
@@ -337,7 +308,6 @@ def save_numpy_to_8bit_tif(images_to_tif, filename, metadata):
         imlist.append(img_out)
         imlist[0].save(filename, compression="tiff_deflate", save_all=True,
                             append_images=imlist[1:], tiffinfo = ifd)
-
 
 
 def save_fits(image, filename, path=None):
