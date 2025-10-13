@@ -22,7 +22,7 @@ ToFiE is a semi-automated topology-aware fiber extraction workflow that facilita
 `pip install -r <project directory>/fiber_feature_analysis/requirements.txt`
 
 
-![image](methodology.png)
+![image](workflow_only.png)
 
 
 ## Image Pre-processing
