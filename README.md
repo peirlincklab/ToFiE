@@ -24,29 +24,19 @@ ToFiE is a semi-automated topology-aware fiber extraction workflow that facilita
 
 ![image](workflow_only.png)
 
+## Workflow 
+The workflow works in three steps: first it takes high resolution 3D images and performs image processing: denoising, correcting for intensity attenuation with depth, and deconvoluting using a theoretical PSF. Then the workflow relies on the DisPerSe software (Sousbie 2011)  to extract the 1-dimensional topological structure of the processed image data, in other words our fiber skeleton. The filaments and junctions of the skeleton are further refined for the particular biological network of interest through several functions, and lastly converted into a graph network.
 
-## Image Pre-processing
+### Image Pre-processing
+To address noise in the raw image, we apply a Gaussian filter, followed by a median filter. We standardize the contrast and intensities across the z-axis (depth) of the smoothened image by re-normalizing pixel intensities falling between a specified lower and upper threshold such that their values span the complete 8-bit range, based on the method of Intensify3D (Yayon et. al. 2018). Pixel values outside the thresholds are clipped to the 8-bit range limits. The normalizing step is important to ensure the algorithm reconstructs unbiasedly at all depths, as darker fibrous structures would be considered as less persistent topological features of the network. The enhanced image stack is deconvoluted with the Gaussian point spread function (PSF) and the Richardson-Lucy deconvolution algorithm using the SDeconv python
+framework (Prigen 2023). The resolution of the smoothened image, estimated with the Fourier Ring Correlation (FRC) function in the MIPLIB software (Koh et al. 2019), is used as the lateral and axial size of the PSF. To enhance the contrast after deconvolution, we re-normalize the image stack to the full 8-bit range as previously.
 
-Gaussian blur, median filter, z- intensity correction, deconvolution, and FRC resolution is carried out in **preprocess_images.ipynb**. 
-Associated functions for pre-processing are found in **denoise_contrast_enhance.py**. Deconvolution was carried out with the sdeconv Python library. Functions from the MIPLIB Python library were used for FRC resolution estimation. These functions were slightly modified, and can be found in the local folder miplibrary.
-  
-## Skeletonization and network graph creation
 
-### **persistence_thresholding.ipynb**
-The persistence threshold and trimbelow value was determined by plotting a histogram of the image intensities and making a persistence diagram. This is carried out in the notebook, with custom functions from the scripts: **read_skeleton, denoise_contrast_enhance, skeleton_processing**.
+### Skeletonization 
+Discrete Morse theory (DMT) and persistent homology form the mathematical framework for obtaining the initial skeleton of the collagen network from the processed image. For a detailed explanation, we refer the readers to the work of Sousbie.  We use the specific implementation of DMT in the DisPerSe software to trace the fiber skeleton through the discrete 1−manifold, taking a similar approach as Merle et. al. in DISSECT. Persistent homology identifies more persistent (robust) topological features. Persistence is defined as the difference in field intensities of a topological feature in the 1-manifold, a larger difference indicating greater topological importance. DisPerSe can be run either locally (given sufficient computing resources), or using the cluster. Four parameters (−cut, −smooth, −assemble, −trimBelow) enables adjusting the 1-manifold in DisPerSe. The cut parameter sets the persistence threshold: too high of a threshold means dim fibers are not traced, and too low of a threshold result in an overtraced network. The smooth parameter controls the number of sampling points to average over to smoothen a filament. The assemble parameter defines the maximum angle for merging neighboring filaments in the skeleton. The trimBelow parameter removes topological features associated with an intensity lower than the set threshold. Unwanted cross-connections between fibers across dark regions in the image are removed with a high enough threshold. The obtained DisPerSe skeleton S is defined in filament subunits F, where each filament is described by endpoints c and sampling points s.
 
-### **skeleton_refinement.ipynb**
-The raw skeleton obtained from DisPerSe is processed in three steps in this notebook. The custom functions are found in the scripts: **read_skeleton, skeleton_processing**.
-
-### **skeleton_to_network.ipynb**
-In this notebook, we load the raw DisPerSe skeleton, process the skeleton and convert the skeleton into a NetworkX graph. The full set of topological and geometrical descriptors are computed from the graph and saved. Custom functions are found in the scripts: **read_skeleton, skeleton_processing, skeleton_network**.
-
-## Interactive visualization with Vedo
-**vedo_2d.py, vedo.py**
-
-## 3D orientation histogram
-### **fittingbivariateVonMises.m**
-To fit the bivariate Von Mises distribution to the 3D orientation histogram, the code by Alberini et. al. (2024) was adapted in the Matlab script.
+### Skeleton refinement
+We develop a set of custom functions for further refining filament subunits within the DisPerSe skeleton for the application to biological fibrous networks (illustrated in Figure 1c). First, original filaments in the skeleton are broken down at the branchpoints or endpoints, such that endpoints cannot be contained within the redefined filaments. This establishes a consistent base definition. Filaments shorter than a specific length threshold are merged with their neighboring filament, or removed, depending on the degree kn of the endpoints of the short filament. Neighboring filaments that share a similar orientation within an angle threshold are merged. To clean up the skeleton further, broken ends are removed, and to obtain a fully connected network dangling ends can also be removed. The processed skeleton is converted into an undirected graph with the NetworkX python library, with nodes and edges to represent the endpoints and filaments of the skeleton.
 
 
 
