@@ -32,7 +32,7 @@ Install ipykernel to run the workflow as in an interactive window on Visual Stud
 ## Workflow 
 The workflow works in three steps: first it takes high resolution 3D images and performs image processing; denoising, correcting for intensity attenuation with depth, and deconvoluting using a theoretical PSF. Second, it links to the DisPerSe software (Sousbie 2011) to extract the 1-dimensional topological structure of the processed image data, in other words our fiber skeleton. Third, the filaments and junctions of the skeleton are further refined for the particular biological network of interest through several functions and converted into a graph network.
 
-![image](workflow_only.png)
+![image](workflow.png)
 
 **Step 1. Image Pre-processing** -  
 **Input:** 3d image data (.tif file format). 
