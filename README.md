@@ -1,6 +1,7 @@
 # ToFiE: Python framework for Fiber Topology Extraction from microscopy Images.
 
-A workflow for topology-aware three-dimensional fiber reconstruction of biological networks from microscopy images. Supporting code for this workflow can be found in this repository. 
+ToFiE is a semi-automated topology-aware fiber extraction workflow that facilitates connectivity-preserving 3D reconstructions of dense and heterogeneous collagen networks from confocal fluorescence images. ToFiE traces a skeleton based on Discrete Morse theory
+(DMT) and persistent homology via DisPerse, making it more robust against noise and signal heterogeneity in experimental images. ToFiE is also generally applicable to biological fibrous networks for investigating structure-function and generating experimentally-informed microstructural templates for numerical studies. Supporting code for this workflow can be found in this repository. 
 
 ![image](3D_view_example_network.svg)
 
