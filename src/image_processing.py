@@ -16,7 +16,6 @@ from miplib.ui.plots import frc as frcplots
 
 sys.path.insert(1, '/Users/Work/Desktop/Master/ARP/fiber_feature_analysis/')
 sys.path.insert(1, '/Users/Work/Desktop/Master/ARP/fiber_feature_analysis/src/')
-sys.path.insert(1, '/Users/Work/Desktop/Master/ARP/fiber_feature_analysis/src/preprocessing/')
 
 # SDeconv python framework for PSF generation and deconvolution of 3D images
 from sdeconv.psfs import SPSFGaussian, SPSFGibsonLanni
@@ -177,57 +176,85 @@ def image_processing(config_path):
     save_numpy_to_8bit_tif(deconv_res_intensity_correction,  filename = path_to_output + f"processed_{image}", metadata=metadata)
     save_fits(deconv_res_intensity_correction, f"processed_{image}", path = path_to_output)
 
-    # Plot image processing results
     cmp = 'magma'
-    plt.figure(figsize=(6,4), dpi=600)
-    plt.subplot(2,3,1)
-    plt.imshow(np.max(normalize_numpy_8bit(raw_stack), axis=0), cmap=cmp, vmin=0, vmax=255)
-    plt.axis('off')
-    plt.title("1- original", fontsize = 8)
-    plt.tight_layout(pad=0.1)
-    plt.subplot(2,3,2)
-    plt.imshow(np.max(normalize_numpy_8bit(processed_stack_intensity_correction), axis=0), cmap=cmp, vmin=0, vmax=255)
-    plt.axis('off')
-    plt.title("2- denoised + intensity corrected", fontsize = 8)
-    plt.tight_layout(pad=0.1)
-    plt.subplot(2,3,3)
-    plt.imshow(np.max(normalize_numpy_8bit(deconv_res_intensity_correction), axis=0), cmap=cmp, vmin=0, vmax=255)
-    plt.axis('off')
-    plt.title("3- deconvoluted", fontsize = 8)
-    plt.tight_layout(pad=0.1)
 
-    intensity_z, intensity_z_min, intensity_z_max, intensity_z_after  = [], [], [], []
-    x = np.arange(0,raw_stack.shape[0])
 
-    for i in np.arange(0,raw_stack.shape[0]):
-        maxi = np.max(raw_stack[i,...])  # Maximum pixel intensity in the slice
-        minimum = np.min(raw_stack[i,...])  # Average pixel intensity in the slice
-        percentage = np.quantile(raw_stack[i,...], upper) # nth- percentile pixel intensity in the slice
-        intensity_z.append(percentage)
-        intensity_z_min.append(minimum)
-        intensity_z_max.append(maxi)
-        corrected_perc = np.quantile(processed_stack_intensity_correction[i,...], upper) # Nth- percentile pixel intensity in the corrected slice
-        intensity_z_after.append(corrected_perc)
+    if len(deconv_res_intensity_correction.shape)==3:
+            
+        plt.figure(figsize=(6,4), dpi=600)
+        plt.subplot(2,3,1)
+        plt.imshow(np.max(normalize_numpy_8bit(raw_stack), axis=0), cmap=cmp, vmin=0, vmax=255)
+        plt.axis('off')
+        plt.title("1- original", fontsize = 8)
+        plt.tight_layout(pad=0.1)
+        plt.subplot(2,3,2)
+        plt.imshow(np.max(normalize_numpy_8bit(processed_stack_intensity_correction), axis=0), cmap=cmp, vmin=0, vmax=255)
+        plt.axis('off')
+        plt.title("2- denoised + intensity corrected", fontsize = 8)
+        plt.tight_layout(pad=0.1)
+        plt.subplot(2,3,3)
+        plt.imshow(np.max(normalize_numpy_8bit(deconv_res_intensity_correction), axis=0), cmap=cmp, vmin=0, vmax=255)
+        plt.axis('off')
+        plt.title("3- deconvoluted", fontsize = 8)
+        plt.tight_layout(pad=0.1)
+
+        intensity_z, intensity_z_min, intensity_z_max, intensity_z_after  = [], [], [], []
+        x = np.arange(0,raw_stack.shape[0])
+
+        for i in np.arange(0,raw_stack.shape[0]):
+            maxi = np.max(raw_stack[i,...])  # Maximum pixel intensity in the slice
+            minimum = np.min(raw_stack[i,...])  # Average pixel intensity in the slice
+            percentage = np.quantile(raw_stack[i,...], upper) # nth- percentile pixel intensity in the slice
+            intensity_z.append(percentage)
+            intensity_z_min.append(minimum)
+            intensity_z_max.append(maxi)
+            corrected_perc = np.quantile(processed_stack_intensity_correction[i,...], upper) # Nth- percentile pixel intensity in the corrected slice
+            intensity_z_after.append(corrected_perc)
+        
+        intensity_z_smoothed = gaussian_kernel_smoothing(np.arange(raw_stack.shape[0]), np.array(intensity_z), sigma = 10)
+        intensity_z_after_smoothed = gaussian_kernel_smoothing(np.arange(processed_stack_intensity_correction.shape[0]), np.array(intensity_z_after), sigma = 10)
     
-    intensity_z_smoothed = gaussian_kernel_smoothing(np.arange(raw_stack.shape[0]), np.array(intensity_z), sigma = 10)
-    intensity_z_after_smoothed = gaussian_kernel_smoothing(np.arange(processed_stack_intensity_correction.shape[0]), np.array(intensity_z_after), sigma = 10)
- 
-    plt.subplot(2,3,5)
-    plt.plot(x, intensity_z, 'o', ms = 1, color = "m")
-    plt.plot(x, intensity_z_smoothed, linewidth = 2, color = "m", label=f"no z-correction ($P_{{{upper*100}}}$)") 
-    plt.plot(x, intensity_z_after, 'ko', ms = 1) 
-    plt.plot(x, intensity_z_after_smoothed, linewidth = 2, color = "k", label=f"z-correction ($P_{{{upper*100}}}$)")
-    plt.legend(fontsize= 6, loc = "lower right", frameon = False)
-    plt.xlabel("z-slice", fontsize= 8)
-    plt.ylabel("intensity", fontsize= 8)
-    plt.ylim(0,260)
-    plt.minorticks_on()
-    plt.tick_params(direction='in', which= "both", top = True, right = True)
+        plt.subplot(2,3,5)
+        plt.plot(x, intensity_z, 'o', ms = 1, color = "m")
+        plt.plot(x, intensity_z_smoothed, linewidth = 2, color = "m", label=f"no z-correction ($P_{{{upper*100}}}$)") 
+        plt.plot(x, intensity_z_after, 'ko', ms = 1) 
+        plt.plot(x, intensity_z_after_smoothed, linewidth = 2, color = "k", label=f"z-correction ($P_{{{upper*100}}}$)")
+        plt.legend(fontsize= 6, loc = "lower right", frameon = False)
+        plt.xlabel("z-slice", fontsize= 8)
+        plt.ylabel("intensity", fontsize= 8)
+        plt.ylim(0,260)
+        plt.minorticks_on()
+        plt.tick_params(direction='in', which= "both", top = True, right = True)
 
-    plt.tight_layout(pad=0.1)
-    plt.savefig(path_to_output + f"figures/overview_{image}.png", dpi=600, pad_inches=0, bbox_inches='tight')
-    plt.show()
-    
+        plt.tight_layout(pad=0.1)
+        plt.savefig(path_to_output + f"figures/overview_{image}.png", dpi=600, pad_inches=0, bbox_inches='tight')
+        plt.show()
+
+    else:
+        
+        plt.figure(figsize=(6,4), dpi=600)
+        plt.subplot(2,3,1)
+        plt.imshow(normalize_numpy_8bit(raw_stack), cmap=cmp, vmin=0, vmax=255)
+        plt.axis('off')
+        plt.title("1- original", fontsize = 8)
+        plt.tight_layout(pad=0.1)
+        plt.subplot(2,3,2)
+        plt.imshow(normalize_numpy_8bit(processed_stack_intensity_correction), cmap=cmp, vmin=0, vmax=255)
+        plt.axis('off')
+        plt.title("2- denoised + intensity corrected", fontsize = 8)
+        plt.tight_layout(pad=0.1)
+        plt.subplot(2,3,3)
+        plt.imshow(normalize_numpy_8bit(deconv_res_intensity_correction), cmap=cmp, vmin=0, vmax=255)
+        plt.axis('off')
+        plt.title("3- deconvoluted", fontsize = 8)
+        plt.tight_layout(pad=0.1)
+
+        
+        plt.tight_layout(pad=0.1)
+        plt.savefig(path_to_output + f"figures/overview_{image}.png", dpi=600, pad_inches=0, bbox_inches='tight')
+        plt.show()
+
+
     return raw_stack, deconv_res_intensity_correction  #deconv_res_intensity_correction #normalize_numpy_8bit(raw_stack), processed_stack_intensity_correction
 
 if __name__ == "__main__":
