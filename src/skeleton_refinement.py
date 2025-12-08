@@ -70,7 +70,7 @@ def skeleton_refinement(config_path):
     # 2D visualization
     dic_pos = {}
     for node, attr in graph.nodes(data=True):
-        dic_pos[node] = [attr['x_um'], attr['y_um']]
+        dic_pos[node] = [attr['x'], attr['y']]
     plt.figure(figsize=(6,4), dpi=300)
     nx.draw(graph, node_size = 0.75, node_color="orange", edge_color = "orange", width = 0.5, pos = dic_pos, alpha = 0.8)
     plt.imshow(np.max(img, axis = 0),  alpha = 1, cmap = "gray")
@@ -80,6 +80,7 @@ def skeleton_refinement(config_path):
 
     # 3D visualization
     pyVista_visualization(str(base_path), image, path_to_output + network )
+
 
    
 if __name__ == "__main__":
