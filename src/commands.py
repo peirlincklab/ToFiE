@@ -1,14 +1,16 @@
 import os
 import yaml
 from pathlib import Path
+import sys
 
+python_exe = sys.executable
 
 def get_image_processing_command(config_dir,  config_file):
         
     cmd = [
-        "python",
-        config_dir + "src/image_processing.py",
-        "--config", config_dir+config_file,
+    python_exe,
+    str(Path(config_dir) / "src" / "image_processing.py"),
+    "--config", str(Path(config_dir) / config_file),
     ]
 
     return cmd
@@ -94,9 +96,9 @@ def get_disperse_commands(config_dir, config_file, local=True):
 def get_skeleton_refinement_command(config_dir, config_file):
         
     cmd = [
-        "python",
-        config_dir + "src/skeleton_refinement.py",
-        "--config", config_dir+config_file, 
+        python_exe,
+        str( Path(config_dir) / "src" / "skeleton_refinement.py"),
+        "--config", str( Path(config_dir) / config_file),
     ]
     
     return cmd
