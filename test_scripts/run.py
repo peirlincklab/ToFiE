@@ -1,9 +1,11 @@
 #%%
 import subprocess
 import sys
-
-config_dir = "/Users/Work/Desktop/Master/ARP/fiber_feature_analysis/"
+import os
+config_dir = r"C:\Users\rtogo\Nextcloud\Collagen\ToFiE-main\ToFiE-main\\"
 config_file = "config.yaml"
+config_path = os.path.join(config_dir, config_file)
+
 sys.path.append(config_dir)
 from src.commands import get_image_processing_command, get_disperse_commands, get_skeleton_refinement_command
 
