@@ -4,6 +4,7 @@ import pickle
 import pyvista as pv
 import numpy as np
 import sys
+import os
 
 
 def pyVista_visualization(dir, image, network_path):
@@ -72,7 +73,9 @@ def pyVista_visualization(dir, image, network_path):
     ]
 
     p.camera_position = camera_position
-    p.save_graphic(dir + f"outputs/figures/3D_view_{image}.svg") 
+    figures_dir = os.path.join(dir, "outputs", "figures")
+    os.makedirs(figures_dir, exist_ok=True)
+    p.save_graphic(os.path.join(figures_dir, f"3D_view_{image}.svg")) 
     p.show(interactive=True)
 
 
