@@ -1,7 +1,7 @@
 path: "/Users/Work/Desktop/Master/ARP/fiber_feature_analysis/"   # Path to directory with config.yaml		
 path_to_dir: "images/"   # Path to input image
 path_to_output: "outputs/"   # Path for outputs
-remote_dir: "/scratch/rtogo/"   # If running the Step 2 on a the cluster, specify the working directory.
+remote_dir: "/scratch/rtogo/ToFiE/outputs"   # If running the Step 2 on a the cluster, specify the working directory.
 
 image: "mini_3d_trial15_1-2volfrac_3p5mgml_37C_pH74_120hz.tif"   # Image tif file name
 
