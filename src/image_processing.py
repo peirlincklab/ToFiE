@@ -50,15 +50,22 @@ def image_processing(config_path):
 
     def compute_single_FRC_resolution(image_object, args, plot = False):
 
-        frc_results = FourierCorrelationDataCollection()
-        frc_results[0] = frc.calculate_single_image_frc(image_object, args, z_correction = image_object.spacing[0]/image_object.spacing[1])
+        try:
 
-        if plot == True:
-            plotter = frcplots.FourierDataPlotter(frc_results)
-            plotter.plot_one(0)
+            frc_results = FourierCorrelationDataCollection()
+            frc_results[0] = frc.calculate_single_image_frc(image_object, args, z_correction = image_object.spacing[0]/image_object.spacing[1])
+
+            if plot == True:
+                plotter = frcplots.FourierDataPlotter(frc_results)
+                plotter.plot_one(0)
 
 
-        return frc_results[0].resolution['resolution'], frc_results
+            return frc_results[0].resolution['resolution'], frc_results
+        
+        except Exception as e:
+
+            print(f"FRC resolution calculation failed: {e}")
+            return np.nan, None
 
 
     def compute_average_FRC_resolution_XY(img_stack, img_spacing, args):
@@ -76,7 +83,7 @@ def image_processing(config_path):
                 frc_resolution, frc_object = compute_single_FRC_resolution(image_2d_xy, args, plot=False)
                 res_xy.append(frc_resolution)
 
-        mean_res_xy = np.mean(res_xy)
+        mean_res_xy = np.nanmean(res_xy) 
 
         # if plot == True:
         #     plot_frc_curve(frc_object, args)
@@ -94,7 +101,8 @@ def image_processing(config_path):
             res_yz.append(frc_resolution)
             
             
-        mean_res_yz = np.mean(res_yz)
+        mean_res_yz = np.nanmean(res_yz) 
+        
         print ("Average YZ resolution = ", mean_res_yz )
 
         return mean_res_yz
