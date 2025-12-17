@@ -9,7 +9,7 @@
 #SBATCH --mem-per-cpu=16G
 #SBATCH --output=output_%j.out
 
-apptainer pull docker://glyg/disperse:latest
+module load apptainer
 
 chmod u+x disperse_commands.sh
 
