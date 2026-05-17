@@ -1,9 +1,22 @@
 # ToFiE: Topology-aware Fiber Extraction workflow for 3D reconstruction of biological fibrous networks
- 
-> The preprint describing this method is **currently in preparation**.  
-> Please **do not copy, reuse, or redistribute** this code or any associated materials until the preprint is publicly released.  
-> For permission or collaboration inquiries, contact: r.togo@tudelft.nl
 
+When using this work, please cite:
+[preprint](https://doi.org/10.48550/arXiv.2604.18230)
+
+~~~bibtex
+@article{Togo2026,
+       author = {Togo, Risa and Cardona, Sara and Nagle, Ir{\`e}ne and Koenderink, Gijsje H. and Fereidoonnezhad, Behrooz and Peirlinck, Mathias},
+        title = "{ToFiE, a Topology-aware Fiber Extraction workflow for 3D reconstruction of dense and heterogeneous biological fiber networks from microscopy images}",
+      journal = {arXiv e-prints},
+      url = {http://dx.doi.org/10.48550/arXiv.2604.18230)},
+      DOI = {10.48550/arXiv.2604.18230)},
+         year = 2026,
+        month = apr,
+          eid = {arXiv:2604.18230},
+        pages = {arXiv:2604.18230},
+archivePrefix = {arXiv},
+}
+~~~
 
 ToFiE is a semi-automated topology-aware fiber extraction workflow that facilitates connectivity-preserving 3D reconstructions of dense and heterogeneous collagen networks from confocal fluorescence images. ToFiE traces a skeleton based on Discrete Morse theory
 (DMT) and persistent homology via DisPerse, making it more robust against noise and signal heterogeneity in experimental images. ToFiE is also generally applicable to biological fibrous networks for investigating structure-function and generating experimentally-informed microstructural templates for numerical studies. The workflow relies only on open-source algorithms and can be run completely within the Python environment.
