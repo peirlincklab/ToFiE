@@ -28,8 +28,6 @@ Notice: ToFiE uses DisPerSE for one stage of the analysis pipeline. DisPerSE is 
 
 ToFiE is tested with **Python 3.9.4**. Newer Python versions may fail to build `miplib`.
 
-Pick your system: [Windows](#windows) or [Mac](#mac). Then check the [install](#check-that-it-worked) and see [Troubleshooting](#troubleshooting) if something fails.
-
 ---
 
 ## Windows
