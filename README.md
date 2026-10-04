@@ -111,7 +111,7 @@ python -m pip install -r requirements.txt
 
 ---
 
-## Check that it worked
+## Sanity checks
 
 ```bash
 python --version                                 # states 3.9.x
