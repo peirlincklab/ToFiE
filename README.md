@@ -24,25 +24,108 @@ ToFiE is a semi-automated topology-aware fiber extraction workflow that facilita
 Notice: ToFiE uses DisPerSE for one stage of the analysis pipeline. DisPerSE is not redistributed with ToFiE and must be obtained separately by users in accordance with its own licensing and installation requirements.
 
 ![image](3D_view_example_network.svg)
+# ToFiE installation
 
-## Installation through terminal
+ToFiE is tested with **Python 3.9.4**. Newer Python versions may fail to build `miplib`.
 
-First create a virtual environment with python 3.9.4.
+---
 
-`python3.9 -m venv ToFiE_env`
+## Windows
 
-Then make sure to activate the environment in the terminal. 
+### 1. Install the prerequisites
 
-`source ToFiE_env/bin/activate`
+Open PowerShell and run:
 
-Install all python modules and dependencies needed using pip.
+```powershell
+winget install Python.Python.3.9
+winget install Oracle.JavaRuntimeEnvironment
+winget install Microsoft.VisualStudio.2022.BuildTools --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
 
-`pip install -r <project directory>/fiber_feature_analysis/requirements.txt`
+- The C++ workload (`VCTools`) is what `miplib` needs to compile. Installing "Build Tools" without it is not enough.
+- Restart the terminal afterwards.
 
-Install ipykernel to run the workflow as in an interactive window on Visual Studio code.  
+### 2. Clone the ToFiE repository and create the virtual environment
 
-`python -m ipykernel install --name "ToFiE_env"`
+```powershell
+git clone <ToFiE repo URL>
+cd ToFiE-main
+py -3.9 -m venv ToFiE_env
+```
 
+### 3. Activate the ToFiE environment
+
+The C++ compiler is only available in the **Developer PowerShell for VS** or the Developer Command Prompt, not in the normal PowerShell. Open, `cd` into the repository, and activate the environment:
+
+```powershell
+cd path\to\ToFiE-main
+Set-ExecutionPolicy -Scope Process Bypass     # only if activation is blocked
+.\ToFiE_env\Scripts\Activate.ps1
+```
+
+You should see `(ToFiE_env)` at the start of the prompt.
+
+### 4. Install the packages in the specific order
+
+```powershell
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install numpy==1.25.2
+python -m pip install miplib==1.0.6 --no-build-isolation
+python -m pip install -r requirements.txt
+```
+
+`numpy` has to be installed before `miplib` because `--no-build-isolation` makes `miplib` build against the numpy already in the environment.
+
+---
+
+## Mac
+
+### 1. Install the prerequisites 
+
+```bash
+xcode-select --install                 # C/C++ compiler
+brew install python@3.9 openjdk
+```
+
+### 2. Clone the ToFiE repository and create the virtual environment
+
+```bash
+git clone <ToFiE repo URL>
+cd ToFiE-main
+python3.9 -m venv ToFiE_env
+source ToFiE_env/bin/activate
+```
+
+You should see `(ToFiE_env)` at the start of the prompt.
+
+### 3. Install the packages in the specific order
+
+```bash
+python -m pip install --upgrade pip setuptools wheel
+python -m pip install numpy==1.25.2
+python -m pip install miplib==1.0.6 --no-build-isolation
+python -m pip install -r requirements.txt
+```
+
+---
+
+## Sanity checks
+
+```bash
+python --version                                 # states 3.9.x
+python -c "import miplib, numpy; print('ok')"    # prints 'ok'
+java -version                                    # prints Java version
+```
+
+## Running scripts
+
+1. Open a terminal in the ToFiE repository.
+2. Activate the virtual environment (`.\ToFiE_env\Scripts\Activate.ps1` on Windows, `source ToFiE_env/bin/activate` on Mac).
+3. Run the script, for example:
+
+```bash
+python test_scripts/run.py
+```
 
 ## Workflow 
 The workflow works in three steps: first it takes high resolution 3D images and performs image processing; denoising, correcting for intensity attenuation with depth, and deconvoluting using a theoretical PSF. Second, it links to the DisPerSe software (Sousbie 2011) to extract the 1-dimensional topological structure of the processed image data, in other words our fiber skeleton. Third, the filaments and junctions of the skeleton are further refined for the particular biological network of interest through several functions and converted into a graph network.
