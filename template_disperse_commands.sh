@@ -1,62 +1,30 @@
 #!/bin/sh
+# usage: disperse_commands.sh fits persistence smooth assemble trimBelow remote_dir nthreads
+set -e
 
-# Define directories
+fits=$1
+pers=$2
+smooth=$3
+assemble=$4
+trim=$5
 remote_dir=$6
-container_dir="/home/"
+nthreads=$7
 
-# Set the directory for docker cache files in scratch
+c=/home/
+sif=disperse_latest.sif
 export APPTAINER_CACHEDIR=/scratch/$USER/.apptainer/cache
 
-fits_filename=$1
+mkdir -p "${remote_dir}logs"
+log="${remote_dir}logs/timing_${SLURM_JOB_ID:-manual}.csv"
+[ -f "$log" ] || echo "step,wall_s,max_rss_kb,pct_cpu,exit" > "$log"
 
-# Parameters
-persistence_val=$2
-smooth_val=$3 
-assemble_val=$4
-trimBelow_val=$5
+load=""
+[ -f "${remote_dir}${fits}.MSC" ] && load="-loadMSC ${c}${fits}.MSC"
 
-echo "=================="
-echo "RUNNING PIPELINE"
-echo "------------------"
-echo "Remote Directory: $remote_dir"
-echo "Fits Filename: $fits_filename"
-echo "Persistence: $persistence_val"
-echo "Smoothing: $smooth_val"
-echo "Assemble: $assemble_val"
-echo "Trimming: $trimBelow_val"
-echo "=================="
+/usr/bin/time -a -o "$log" -f "mse,%e,%M,%P,%x" \
+    apptainer exec --bind ${remote_dir}:${c} $sif \
+    mse ${c}${fits} -outDir $c -upSkl -periodicity 0 $load -nthreads $nthreads -cut $pers
 
-
-# First command
-if [ -f "${remote_dir}${1}.MSC" ]; then
-	echo "Opening existing file ${remote_dir}${1}.MSC"
-	command_to_run_1="mse ${container_dir}${fits_filename} -outDir ${container_dir} -upSkl -periodicity 0 -loadMSC ${container_dir}${1}.MSC -nthreads 8 -cut ${persistence_val}"
-else
-	command_to_run_1="mse ${container_dir}${fits_filename} -outDir ${container_dir} -upSkl -periodicity 0 -nthreads 8 -cut ${persistence_val}"
-fi
-
-apptainer exec --bind ${remote_dir}:${container_dir} disperse_latest.sif ${command_to_run_1}
-
-
-if [ $? -ne 0 ]; then
-    echo "Error: First command failed."
-    exit 1
-fi
-
-# Check the output files of mse
-echo "Output files:"
-MSC_FILE="${1}.MSC"  #$(ls -t ${remote_dir} | head -n 3 | tail -n 1)
-NDSKL_FILE="${1}_c${2}.up.NDskl" #$(ls -t ${remote_dir} | head -n 2 | tail -n 1)
-
-echo "NDSKL_FILE: $NDSKL_FILE"
-echo "MSC_FILE: $MSC_FILE"
-
-# Second command
-command_to_run_2="skelconv ${container_dir}${NDSKL_FILE} -outDir ${container_dir} -breakdown -smooth ${smooth_val} -assemble ${assemble_val} -trimBelow ${trimBelow_val} -rmBoundary -to NDskl_ascii"
-
-apptainer exec --bind ${remote_dir}:${container_dir} disperse_latest.sif ${command_to_run_2}
-
-if [ $? -ne 0 ]; then
-    echo "Error: Second command failed."
-    exit 1
-fi
+/usr/bin/time -a -o "$log" -f "skelconv,%e,%M,%P,%x" \
+    apptainer exec --bind ${remote_dir}:${c} $sif \
+    skelconv ${c}${fits}_c${pers}.up.NDskl -outDir $c -breakdown -smooth $smooth -assemble $assemble -trimBelow $trim -rmBoundary -to NDskl_ascii
