@@ -147,8 +147,11 @@ A set of custom functions are applied for further refining filament subunits wit
 
 ### Example
 
-The three steps can be run altogether with run.py or separately in run_steps.py. For larger image data, the skeletonization process can be outsourced to Docker or Apptainer on a cluster. In that case specify in the function `ToFiE_workflow_step2(config_dir, config_file, local = False)`, instead of `ToFiE_workflow_step2(config_dir, config_file, local = True)`. 
+The three steps of the ToFiE workflow can be executed either locally or on a high-performance computing (HPC) cluster, depending on the image size and computational requirements.
 
+**Local execution:** Follow the installation instructions, activate the virtual environment, and run the Python script `run.py`. Ensure that the Docker application is running throughout the execution.
+
+**HPC execution:** Submit the Bash script `submit_pipeline.sh` with the parameters specified in `config_run.yaml`. Depending on the resource availability and usage limits of the HPC cluster, you may need to adjust the resources requested in `step1_preprocess.sbatch`, `template_reconstruction.sh`, and `step3_postprocess.sbatch`.
 
 
 
