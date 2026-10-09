@@ -127,7 +127,7 @@ java -version                                    # prints Java version
 python test_scripts/run.py
 ```
 
-## Workflow 
+# Workflow 
 The workflow works in three steps: first it takes high resolution 3D images and performs image processing; denoising, correcting for intensity attenuation with depth, and deconvoluting using a theoretical PSF. Second, it links to the DisPerSe software (Sousbie 2011) to extract the 1-dimensional topological structure of the processed image data, in other words our fiber skeleton. Third, the filaments and junctions of the skeleton are further refined for the particular biological network of interest through several functions and converted into a graph network.
 
 ![image](workflow.png)
@@ -145,7 +145,7 @@ A set of custom functions are applied for further refining filament subunits wit
 
 
 
-### Example
+## Implementation
 
 The three steps of the ToFiE workflow can be executed either locally or on a high-performance computing (HPC) cluster, depending on the image size and computational requirements.
 
