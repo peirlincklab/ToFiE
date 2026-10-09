@@ -11,7 +11,7 @@
 module load 2026 cpu miniforge3
 conda activate /scratch/$USER/ToFiE_env
 
-D=/scratch/rtogo/ToFiE-main/ToFiE-main
+D=/scratch/rtogo/ToFiE
 CONFIG_FILE="${CONFIG_FILE:-config.yaml}"
 echo "Using config file: $CONFIG_FILE"
 
