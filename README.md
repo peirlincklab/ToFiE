@@ -49,7 +49,7 @@ winget install Microsoft.VisualStudio.2022.BuildTools --override "--passive --wa
 
 ```powershell
 git clone <ToFiE repo URL>
-cd ToFiE-main
+cd ToFiE
 py -3.9 -m venv ToFiE_env
 ```
 
@@ -58,7 +58,7 @@ py -3.9 -m venv ToFiE_env
 The C++ compiler is only available in the **Developer PowerShell for VS** or the Developer Command Prompt, not in the normal PowerShell. Open, `cd` into the repository, and activate the environment:
 
 ```powershell
-cd path\to\ToFiE-main
+cd path\to\ToFiE
 Set-ExecutionPolicy -Scope Process Bypass     # only if activation is blocked
 .\ToFiE_env\Scripts\Activate.ps1
 ```
@@ -91,7 +91,7 @@ brew install python@3.9 openjdk
 
 ```bash
 git clone <ToFiE repo URL>
-cd ToFiE-main
+cd ToFiE
 python3.9 -m venv ToFiE_env
 source ToFiE_env/bin/activate
 ```
